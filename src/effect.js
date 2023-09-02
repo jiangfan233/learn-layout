@@ -1,5 +1,4 @@
 const bucket = new WeakMap();
-let activeEffect;
 let effectStack = [];
 
 function cleanUp(effectFn) {

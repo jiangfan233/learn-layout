@@ -1,0 +1,16 @@
+{
+  "name": "layout-learn",
+  "version": "1.0.0",
+  "description": "",
+  "main": "effect.js",
+  "module": "es6",
+  "scripts": {
+    "test": "jest",
+    "dev": "vite"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.6.4"
+  }
+}

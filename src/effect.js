@@ -16,9 +16,10 @@ function effect(fn, options = {}) {
     effectStack.push(effectFn);
 
     // 通知每个副作用函数集合收集最新的effectFn
-    fn();
+    let res = fn();
 
     effectStack.pop();
+    return res;
   };
 
   // 副作用函数配置项
@@ -27,7 +28,10 @@ function effect(fn, options = {}) {
   // 收集所有包含着effectFn的副作用函数集合，放入一个列表中
   effectFn.deps = [];
 
-  effectFn();
+  if (!options.lazy) {
+    effectFn();
+  }
+  return effectFn;
 }
 
 function proxyObject(data) {
@@ -79,4 +83,6 @@ module.exports = {
   bucket,
   effect,
   proxyObject,
+  track,
+  trigger,
 };

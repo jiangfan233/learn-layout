@@ -13,6 +13,8 @@ function watch(source, cb, options = {}) {
 
   // 当副作用函数为一个异步函数时，返回的结果不一定是根据最新的状态得到的
   // 这是需要使用 onInvalidate 控制
+  // 当cb执行时这里才会注册一个cleanUp函数
+  // 之后每次在cb执行前都会运行一下cleanUp函数
   let cleanUp;
   function onInvalidate(fn) {
     cleanUp = fn;

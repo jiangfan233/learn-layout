@@ -107,3 +107,44 @@ test("test watch onInvalidate argument", () => {
   expect(res).toBe(2);
   expect(once).toHaveBeenCalledTimes(1);
 });
+
+test("test watch onInvalidate argument 2222", () => {
+  const data = { foo: 1 };
+  const obj = proxyObject(data);
+
+  let n = 1;
+  let id;
+  let res;
+  const once = jest.fn(() => {
+    res = n;
+  });
+
+  const clear = jest.fn(() => {
+    expect(id).toBeTruthy();
+    clearTimeout(id);
+  });
+
+  const fn = jest.fn((curr, prev, onInvalidate) => {
+    id = setTimeout(once, n++ * 1000);
+    onInvalidate(clear);
+  });
+
+  watch(() => obj.foo, fn);
+
+  expect(fn).toHaveBeenCalledTimes(0);
+
+  obj.foo++;
+
+  // Fast-forward until all timers have been executed
+  jest.advanceTimersByTime(4000);
+
+  expect(fn).toHaveBeenCalledTimes(1);
+  expect(clear).toHaveBeenCalledTimes(0);
+
+  obj.foo++;
+
+  expect(fn).toHaveBeenCalledTimes(2);
+  expect(clear).toHaveBeenCalledTimes(1);
+  expect(res).toBe(2);
+  expect(once).toHaveBeenCalledTimes(1);
+});

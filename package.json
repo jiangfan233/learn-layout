@@ -6,7 +6,7 @@
   "module": "es6",
   "scripts": {
     "test": "jest",
-    "test-one": "npx jest argv[3]"
+    "test-one": "npx jest --detectOpenHandles argv[3]"
   },
   "author": "",
   "license": "ISC",

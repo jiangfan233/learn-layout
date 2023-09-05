@@ -35,10 +35,16 @@ function effect(fn, options = {}) {
 }
 
 function proxyObject(data) {
-  return new Proxy(data, {
-    get(target, key) {
+  const p = new Proxy(data, {
+    // receiver: the proxy instance or an object that inherits from the proxy instance
+    // receiver === p
+    get(target, key, receiver) {
+      // true false
+      // console.log(receiver === p, receiver === target);
       track(target, key);
-      return target[key];
+
+      // receiver === this
+      return Reflect.get(target, key, receiver);
     },
 
     set(target, key, newVal) {
@@ -47,6 +53,7 @@ function proxyObject(data) {
       return true;
     },
   });
+  return p;
 }
 
 function track(target, key) {

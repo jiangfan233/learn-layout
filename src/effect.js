@@ -1,5 +1,12 @@
 const bucket = new WeakMap();
 let effectStack = [];
+const ITERATE_KEY = Symbol();
+
+const TriggerType = {
+  SET: "SET",
+  ADD: "ADD",
+  DELETE: "DELETE",
+};
 
 function cleanUp(effectFn) {
   // 从每一个副作用函数集合中删除旧的effectFn
@@ -37,7 +44,7 @@ function effect(fn, options = {}) {
 function proxyObject(data) {
   const p = new Proxy(data, {
     // receiver: the proxy instance or an object that inherits from the proxy instance
-    // receiver === p
+    // receiver === p, receiver默认是proxy实例
     get(target, key, receiver) {
       // true false
       // console.log(receiver === p, receiver === target);
@@ -47,9 +54,40 @@ function proxyObject(data) {
       return Reflect.get(target, key, receiver);
     },
 
-    set(target, key, newVal) {
-      target[key] = newVal;
-      trigger(target, key);
+    // A trap for the in operator. key in obj
+    has(target, key) {
+      track(target, key);
+      return Reflect.has(target, key);
+    },
+
+    // for in 操作会调用 ownKeys
+    // 当给对象添加新的属性的时候也会调用 ownKeys
+    // 这里把 ITERATE_KEY 这个symbol对象作为追踪副作用函数的key
+    ownKeys(target) {
+      track(target, ITERATE_KEY);
+      return Reflect.ownKeys(target);
+    },
+
+    set(target, key, newVal, receiver) {
+      // 修改一个对象的属性、给一个对象新增属性
+      // 都会触发set，因此这里要判断
+      const type = Object.prototype.hasOwnProperty.call(target, key)
+        ? TriggerType.SET
+        : TriggerType.ADD;
+
+      // target[key] = newVal;
+      Reflect.set(target, key, newVal, receiver);
+      trigger(target, key, type);
+      return true;
+    },
+
+    deleteProperty(target, key) {
+      const hasKey = Object.prototype.hasOwnProperty.call(target, key);
+      const isDeleted = Reflect.deleteProperty(target, key);
+
+      if (hasKey && isDeleted) {
+        trigger(target, key, "DELETE");
+      }
       return true;
     },
   });
@@ -67,13 +105,24 @@ function track(target, key) {
   currEffect.deps.push(deps);
 }
 
-function trigger(target, key) {
+function trigger(target, key, type) {
   let depsMap = bucket.get(target);
   if (!depsMap) return;
+  //
   let deps = depsMap.get(key);
-  if (!deps) return;
+
+  let runners = [];
+  if (deps) runners.push(...deps);
+
+  // 当对象新增一个属性时，会触发 ownKeys 方法
+  if (type === TriggerType.ADD || type === TriggerType.DELETE) {
+    let iterateEffects = depsMap.get(ITERATE_KEY);
+    if (iterateEffects) runners.push(...iterateEffects);
+  }
+
   let currEffect = effectStack[effectStack.length - 1];
-  [...deps].forEach((effectFunc) => {
+
+  runners.forEach((effectFunc) => {
     // 如果当前的副作用函数和触发执行的副作用函数是同一个，则不执行
     if (effectFunc === currEffect) {
       return;

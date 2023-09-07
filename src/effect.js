@@ -75,9 +75,13 @@ function proxyObject(data) {
         ? TriggerType.SET
         : TriggerType.ADD;
 
-      // target[key] = newVal;
+      let oldValue = target[key];
       Reflect.set(target, key, newVal, receiver);
-      trigger(target, key, type);
+      // NaN === NaN: false; NaN !== NaN: true
+      // (newVal === newVal || oldValue === oldValue) 排除新旧值均为NaN的情况
+      if (oldValue !== newVal && (newVal === newVal || oldValue === oldValue)) {
+        trigger(target, key, type);
+      }
       return true;
     },
 

@@ -42,12 +42,12 @@ function effect(fn, options = {}) {
 }
 
 /**
- * 
- * @param {object} data 
+ *
+ * @param {object} data
  * @param {boolean} isShallow default: true
  * @returns a proxy instance that wraps data;
  */
-function createReactive(data, isShallow=false) {
+function createReactive(data, isShallow = false, isReadOnly = false) {
   const p = new Proxy(data, {
     // receiver: the proxy instance or an object that inherits from the proxy instance
     // receiver === p, receiver默认是proxy实例
@@ -57,20 +57,22 @@ function createReactive(data, isShallow=false) {
         return target;
       }
 
-      // true false
-      // console.log(receiver === p, receiver === target);
-      track(target, key);
+      // 如果一个函数是只读的，那就不能修改，也就没必要追踪副作用函数
+      // console.log(receiver === p, receiver === target);   // true false
+      if(!isReadOnly) {
+        track(target, key);
+      }
 
       // receiver === this
       const value = Reflect.get(target, key, receiver);
 
-      if(isShallow) {
+      if (isShallow) {
         return value;
       }
 
       // 当value是一个对象，同样应该把value包装为响应式对象
       if (typeof value === "object" && value !== null) {
-        return createReactive(value);
+        return isReadOnly ? readOnly(value) : reactive(value);
       }
       return value;
     },
@@ -90,6 +92,11 @@ function createReactive(data, isShallow=false) {
     },
 
     set(target, key, newVal, receiver) {
+      if (isReadOnly) {
+        console.warn(`属性 ${key} 是只读的`);
+        return true;
+      }
+
       // 修改一个对象的属性、给一个对象新增属性
       // 都会触发set，因此这里要判断
       const type = Object.prototype.hasOwnProperty.call(target, key)
@@ -113,6 +120,11 @@ function createReactive(data, isShallow=false) {
     },
 
     deleteProperty(target, key) {
+      if (isReadOnly) {
+        console.warn(`属性 ${key} 是只读的`);
+        return true;
+      }
+
       const hasKey = Object.prototype.hasOwnProperty.call(target, key);
       const isDeleted = Reflect.deleteProperty(target, key);
 
@@ -125,7 +137,6 @@ function createReactive(data, isShallow=false) {
   return p;
 }
 
-
 function reactive(data) {
   return createReactive(data);
 }
@@ -134,7 +145,13 @@ function shallowReactive(data) {
   return createReactive(data, true);
 }
 
+function readOnly(data) {
+  return createReactive(data, false, true);
+}
 
+function shallowReadOnly(data) {
+  return createReactive(data, true, true);
+}
 
 function track(target, key) {
   let currEffect = effectStack[effectStack.length - 1];
@@ -186,4 +203,6 @@ module.exports = {
   reactive,
   shallowReactive,
   proxyObject: reactive,
+  readOnly,
+  shallowReadOnly,
 };

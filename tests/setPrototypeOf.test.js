@@ -73,3 +73,30 @@ test("target would change", () => {
 
   child.bar = 11111;
 });
+
+test("change property values that on prototype chain.", () => {
+  const obj = {};
+  const proto = {
+    get val() {
+      console.log("getter");
+      return 1;
+    },
+    age: 100,
+  };
+
+  Object.setPrototypeOf(obj, proto);
+
+  obj.val = "obj val";
+  expect(obj.val).toBe(1);
+  console.log("obj.val", obj.val);
+
+  Object.defineProperty(obj, "val", {
+    value: "obj val",
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+
+  expect(obj.val).toBe("obj val");
+  console.log("obj.val", obj.val);
+});

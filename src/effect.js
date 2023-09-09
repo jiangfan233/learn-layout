@@ -46,6 +46,11 @@ function proxyObject(data) {
     // receiver: the proxy instance or an object that inherits from the proxy instance
     // receiver === p, receiver默认是proxy实例
     get(target, key, receiver) {
+      // 设置一个raw指针指向receiver的原始对象
+      if (key === "raw") {
+        return target;
+      }
+
       // true false
       // console.log(receiver === p, receiver === target);
       track(target, key);
@@ -77,9 +82,15 @@ function proxyObject(data) {
 
       let oldValue = target[key];
       Reflect.set(target, key, newVal, receiver);
+
+      // receiver.raw === target 判断receiver的原始对象是否是target
       // NaN === NaN: false; NaN !== NaN: true
       // (newVal === newVal || oldValue === oldValue) 排除新旧值均为NaN的情况
-      if (oldValue !== newVal && (newVal === newVal || oldValue === oldValue)) {
+      if (
+        receiver.raw === target &&
+        oldValue !== newVal &&
+        (newVal === newVal || oldValue === oldValue)
+      ) {
         trigger(target, key, type);
       }
       return true;
@@ -145,4 +156,5 @@ module.exports = {
   proxyObject,
   track,
   trigger,
+  reactive: proxyObject,
 };

@@ -38,6 +38,10 @@ test("target would change", () => {
           expect(proto).not.toBe(undefined);
           return { target, receiver };
         });
+        // 如果target并没有key这一属性，
+        // Reflect.set会向上追溯target的原型链，
+        // 并给原型链的key属性设置新value，
+        // 但这一过程中receiver并没有变化
         return Reflect.set(target, key, newValue, receiver);
       },
     });
@@ -56,15 +60,16 @@ test("target would change", () => {
     .mockImplementationOnce((cb) => {
       const { target, receiver } = cb();
       expect(target === obj && receiver.raw === obj).toBe(true);
-      console.log("first call done!")
+      console.log("first call done!");
     })
     .mockImplementationOnce((cb) => {
       const { target, receiver } = cb();
       expect(target === proto && receiver.raw === obj).toBe(true);
       console.log("second call done!");
     })
-    .mockImplementationOnce(cb => console.log("this should not be called!!!"))
-
+    .mockImplementationOnce((cb) =>
+      console.log("this should not be called!!!")
+    );
 
   child.bar = 11111;
 });

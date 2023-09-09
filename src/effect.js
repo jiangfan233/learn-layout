@@ -41,7 +41,13 @@ function effect(fn, options = {}) {
   return effectFn;
 }
 
-function proxyObject(data) {
+/**
+ * 
+ * @param {object} data 
+ * @param {boolean} isShallow default: true
+ * @returns a proxy instance that wraps data;
+ */
+function createReactive(data, isShallow=false) {
   const p = new Proxy(data, {
     // receiver: the proxy instance or an object that inherits from the proxy instance
     // receiver === p, receiver默认是proxy实例
@@ -56,7 +62,17 @@ function proxyObject(data) {
       track(target, key);
 
       // receiver === this
-      return Reflect.get(target, key, receiver);
+      const value = Reflect.get(target, key, receiver);
+
+      if(isShallow) {
+        return value;
+      }
+
+      // 当value是一个对象，同样应该把value包装为响应式对象
+      if (typeof value === "object" && value !== null) {
+        return createReactive(value);
+      }
+      return value;
     },
 
     // A trap for the in operator. key in obj
@@ -109,6 +125,17 @@ function proxyObject(data) {
   return p;
 }
 
+
+function reactive(data) {
+  return createReactive(data);
+}
+
+function shallowReactive(data) {
+  return createReactive(data, true);
+}
+
+
+
 function track(target, key) {
   let currEffect = effectStack[effectStack.length - 1];
   if (!currEffect) return;
@@ -153,8 +180,10 @@ function trigger(target, key, type) {
 module.exports = {
   bucket,
   effect,
-  proxyObject,
+  createReactive,
   track,
   trigger,
-  reactive: proxyObject,
+  reactive,
+  shallowReactive,
+  proxyObject: reactive,
 };

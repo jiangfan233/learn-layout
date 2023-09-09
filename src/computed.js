@@ -1,4 +1,4 @@
-const { effect, proxyObject, track, trigger } = require("../src/effect");
+const { effect, track, trigger } = require("../src/effect");
 
 function computed(getter) {
   // 缓存上一次计算的值

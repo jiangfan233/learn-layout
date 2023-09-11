@@ -59,7 +59,7 @@ function createReactive(data, isShallow = false, isReadOnly = false) {
 
       // 如果一个函数是只读的，那就不能修改，也就没必要追踪副作用函数
       // console.log(receiver === p, receiver === target);   // true false
-      if(!isReadOnly) {
+      if (!isReadOnly) {
         track(target, key);
       }
 
@@ -99,7 +99,11 @@ function createReactive(data, isShallow = false, isReadOnly = false) {
 
       // 修改一个对象的属性、给一个对象新增属性
       // 都会触发set，因此这里要判断
-      const type = Object.prototype.hasOwnProperty.call(target, key)
+      const type = Array.isArray(target)
+        ? Number(key) < target.length
+          ? TriggerType.SET
+          : TriggerType.ADD
+        : Object.prototype.hasOwnProperty.call(target, key)
         ? TriggerType.SET
         : TriggerType.ADD;
 
@@ -114,7 +118,7 @@ function createReactive(data, isShallow = false, isReadOnly = false) {
         oldValue !== newVal &&
         (newVal === newVal || oldValue === oldValue)
       ) {
-        trigger(target, key, type);
+        trigger(target, key, type, newVal);
       }
       return true;
     },
@@ -164,7 +168,7 @@ function track(target, key) {
   currEffect.deps.push(deps);
 }
 
-function trigger(target, key, type) {
+function trigger(target, key, type, newVal) {
   let depsMap = bucket.get(target);
   if (!depsMap) return;
   //
@@ -177,6 +181,27 @@ function trigger(target, key, type) {
   if (type === TriggerType.ADD || type === TriggerType.DELETE) {
     let iterateEffects = depsMap.get(ITERATE_KEY);
     if (iterateEffects) runners.push(...iterateEffects);
+  }
+
+  // 如果数组新增了一个元素（数组长度变长），触发与 length 相关的副作用
+  // arr = [0];
+  // arr[1] = 1;
+  if (type === TriggerType.ADD && Array.isArray(target) && key !== "length") {
+    let lengthEffects = depsMap.get("length");
+    if (lengthEffects) runners.push(...lengthEffects);
+  }
+
+  // 直接修改数组length属性
+  // arr = [0, 1, 2, 3];
+  // arr.length = 0;
+  if (Array.isArray(target) && key === "length") {
+    // 需要注意map的forEach写法
+    // map.forEach((value, key) => ...)
+    depsMap.forEach((set, key) => {
+      if (key >= newVal) {
+        if (set) runners.push(...set);
+      }
+    });
   }
 
   let currEffect = effectStack[effectStack.length - 1];

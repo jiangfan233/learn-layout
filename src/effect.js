@@ -59,7 +59,8 @@ function createReactive(data, isShallow = false, isReadOnly = false) {
 
       // 如果一个函数是只读的，那就不能修改，也就没必要追踪副作用函数
       // console.log(receiver === p, receiver === target);   // true false
-      if (!isReadOnly) {
+      // 避免追踪symbol
+      if (!isReadOnly && typeof key !== "symbol") {
         track(target, key);
       }
 
@@ -86,8 +87,9 @@ function createReactive(data, isShallow = false, isReadOnly = false) {
     // for in 操作会调用 ownKeys
     // 当给对象添加新的属性的时候也会调用 ownKeys
     // 这里把 ITERATE_KEY 这个symbol对象作为追踪副作用函数的key
+    // 如果target是一个数组，那么添加元素或者直接修改数组的length属性都会影响到数组的length属性
     ownKeys(target) {
-      track(target, ITERATE_KEY);
+      track(target, Array.isArray(target) ? "length" : ITERATE_KEY);
       return Reflect.ownKeys(target);
     },
 
